@@ -70,7 +70,7 @@ class Block:
     def get_squares(self):
         return self.squares
 
-    def get_lowest_squares(self) -> int | None:
+    def get_lowest_squares(self) :
         if not self.squares:
             return None
 

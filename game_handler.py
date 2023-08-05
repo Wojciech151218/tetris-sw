@@ -4,9 +4,9 @@ from game import Game
 from action import Tick
 from timer import Timer
 class GameHandler:
-    def __init__(self,input: Input, output: Output,ticks_per_fall=100):
+    def __init__(self,input: Input, output: Output,width =8 ,height = 32,ticks_per_fall=100):
         self.input = input
-        self.game = Game(width=8, height=16)
+        self.game = Game(width=width, height=height)
         self.timer = Timer(ticks_per_fall)
         self.output = output
         self.ticks_per_fall = ticks_per_fall
