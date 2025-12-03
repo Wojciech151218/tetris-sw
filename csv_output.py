@@ -2,14 +2,15 @@ from output import Output
 from game import Game
 from square import Square
 import serial
+import UART
 
 
 class CsvOutput(Output):
     def __init__(self,uart = "UART1" , port ="/dev/ttyS1",baudrate=9600 ):
         UART.setup(uart)
         self.ser = serial.Serial(port = port, baudrate=baudrate)
-        ser.close() 
-        ser.open() 
+        self.ser.close() 
+        self.ser.open() 
 
 
     def render(self, game: Game):
@@ -19,7 +20,7 @@ class CsvOutput(Output):
 
         csv = '\n'.join([get_csv_from_square(s) for s in saquares]) + '\0'
 
-        ser.write(csv)
+        self.ser.write(csv)
 
 
 
