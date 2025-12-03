@@ -1,0 +1,26 @@
+from output import Output
+from game import Game
+from square import Square
+import serial
+
+
+class CsvOutput(Output):
+    def __init__(self,uart = "UART1" , port ="/dev/ttyS1",baudrate=9600 ):
+        UART.setup(uart)
+        self.ser = serial.Serial(port = port, baudrate=baudrate)
+        ser.close() 
+        ser.open() 
+
+
+    def render(self, game: Game):
+        def get_csv_from_square(square: Square) -> str:
+            return f"{square.x};{square.y};{square.color[0]}"
+        saquares = game.get_all_squares()
+
+        csv = '\n'.join([get_csv_from_square(s) for s in saquares]) + '\0'
+
+        ser.write(csv)
+
+
+
+
