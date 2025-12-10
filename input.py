@@ -13,3 +13,14 @@ class Input(ABC):
     def get_action(self) -> Optional[Action]:
         """Return the user action for the current tick or None if idle."""
         raise NotImplementedError
+
+class CombinedInput(Input):
+    def __init__(self, inputs: list[Input]):
+        self.inputs = inputs
+
+    def get_action(self) -> Optional[Action]:
+        for input in self.inputs:
+            action = input.get_action()
+            if action is not None:
+                return action
+        return None
