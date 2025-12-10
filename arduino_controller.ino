@@ -36,7 +36,7 @@ int xyToIndex(int x, int y) {
     }
 }
 
-void displayPixel(Pixel pixel) {
+void displayPixel(const Pixel & pixel) {
     if (pixel.x < 0 || pixel.x >= WIDTH) return;
     if (pixel.y < 0 || pixel.y >= HEIGHT) return;
 
@@ -117,15 +117,30 @@ void setup() {
   Serial.begin(9600);   // or 115200
   Serial.println("Serial started!");
   strip.begin();
+  strip.clear();
+
+  // char * csv = "0;6;b\n";
+  // displayCsv(csv);
+  // strip.setPixelColor(0,strip.Color(255,0,255));
+  // strip.show();
+
+  
 
 }
 
 void loop() {
-  static char csvBuffer[1792]; 
-
-  if (readCsvFromUart(csvBuffer, sizeof(csvBuffer))) {
-    strip.clear();    
-    displayCsv(csvBuffer);
-    strip.show();
+  static char csvBuffer[1792-94-128]; // problemy z pamiecia dynamiczna moze niestarczyc miejsca
+  char * csv = "0;6;b\n";
+  strip.clear(); 
+  //if (readCsvFromUart(csvBuffer, sizeof(csvBuffer))) {
+  if (true) {
+    
+      
+    Serial.println(csvBuffer);
+    // displayCsv(csv);
+    // strip.show();
+    // delay(500);
   }
+  strip.show();
+  
 }
