@@ -8,39 +8,22 @@
 
 Adafruit_NeoPixel strip(NUM_PIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
-enum Color {
-    Red, Green, Blue, Yellow, Purple, Orange, White
-};
-
 struct Pixel {
     short x;
     short y;
-    Color color;
+    char color;
 };
 
-Color getColor(char c) {
+uint32_t colorToRGB(char c) {
     switch (c) {
-        case 'r': return Red;
-        case 'g': return Green;
-        case 'b': return Blue;
-        case 'y': return Yellow;
-        case 'p': return Purple;
-        case 'o': return Orange;
-        case 'w': return White;
-        default:  return Red;
-    }
-}
-
-uint32_t colorToRGB(Color c) {
-    switch (c) {
-        case Red:    return strip.Color(255, 0, 0);
-        case Green:  return strip.Color(0, 255, 0);
-        case Blue:   return strip.Color(0, 0, 255);
-        case Yellow: return strip.Color(255, 255, 0);
-        case Purple: return strip.Color(128, 0, 128);
-        case Orange: return strip.Color(255, 70, 0);
-        case White:  return strip.Color(255, 255, 255);
-        default:     return strip.Color(0, 0, 0);
+        case 'r': return strip.Color(255, 0, 0);
+        case 'g': return strip.Color(0, 255, 0);
+        case 'b': return strip.Color(0, 0, 255);
+        case 'y': return strip.Color(255, 255, 0);
+        case 'p': return strip.Color(128, 0, 128);
+        case 'o': return strip.Color(255, 70, 0);
+        case 'w': return strip.Color(255, 255, 255);
+        default:  return strip.Color(0, 0, 0);
     }
 }
 int xyToIndex(int x, int y) {
@@ -98,7 +81,7 @@ void displayCsv(char *csv) {
         Pixel pixel = {
             (short)x,
             (short)y,
-            getColor(c)
+            c
         };
         if(x>= WIDTH || x < 0 || y>= HEIGHT || y <0){
           Serial.println("recieved pixel doesnt fit on the screen");
@@ -106,6 +89,28 @@ void displayCsv(char *csv) {
         }
         displayPixel(pixel);
     }
+}
+
+bool readCsvFromUart(char *buffer, int bufferSize) {
+    static int bufferIndex = 0;
+    
+    // Read available data from Serial
+    while (Serial.available() > 0) {
+        char c = Serial.read();
+        
+        // Check for end of transmission (newline or null terminator)
+        if (c == '\n' || c == '\r' || bufferIndex >= bufferSize - 1) {
+            if (bufferIndex > 0) {
+                buffer[bufferIndex] = '\0';  // Null terminate the string
+                bufferIndex = 0;  // Reset buffer for next transmission
+                return true;  // Complete CSV line received
+            }
+        } else {
+            buffer[bufferIndex++] = c;  // Add character to buffer
+        }
+    }
+    
+    return false;  // No complete CSV line received yet
 }
 
 void setup() {
@@ -116,11 +121,11 @@ void setup() {
 }
 
 void loop() {
-  char * csv = "0;6;b\n0;5;r\n0;4;g\n";
-  while(true){
-    displayCsv(csv);
+  static char csvBuffer[1792]; 
+
+  if (readCsvFromUart(csvBuffer, sizeof(csvBuffer))) {
+    strip.clear();    
+    displayCsv(csvBuffer);
     strip.show();
   }
-
-
 }
