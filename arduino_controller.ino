@@ -6,6 +6,8 @@
 #define HEIGHT 32
 #define NUM_PIXELS (WIDTH * HEIGHT)
 
+#define MAX_CSV_LINE_SIZE 6
+
 Adafruit_NeoPixel strip(NUM_PIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 struct Pixel {
@@ -46,101 +48,116 @@ void displayPixel(const Pixel & pixel) {
 
     strip.setPixelColor(index, rgb);
 }
-
-void displayCsv(char *csv) {
-    int pos = 0;
-
-    while (csv[pos] != '\0') {
-      
-
-        // Parse X
-        int x = 0;
-        while (csv[pos] >= '0' && csv[pos] <= '9') {
-            x = x * 10 + (csv[pos] - '0');
-            pos++;
-        }
-        if (csv[pos] != ';') return;
-        pos++;
-
-        // Parse Y
-        int y = 0;
-        while (csv[pos] >= '0' && csv[pos] <= '9') {
-            y = y * 10 + (csv[pos] - '0');
-            pos++;
-        }
-        if (csv[pos] != ';') return;
-        pos++;
-
-        // Parse color char
-        char c = csv[pos];
-        pos++;
-
-        // Skip to next line
-        while (csv[pos] == '\r' || csv[pos] == '\n') pos++;
-
-        Pixel pixel = {
-            (short)x,
-            (short)y,
-            c
-        };
-        if(x>= WIDTH || x < 0 || y>= HEIGHT || y <0){
-          Serial.println("recieved pixel doesnt fit on the screen");
-          return;
-        }
-        displayPixel(pixel);
-    }
+void logPixel(const Pixel & pixel){
+  Serial.print("x : ");
+  Serial.print(pixel.x);
+  Serial.print(" y : ");
+  Serial.print(pixel.y);
+  Serial.print(" color : ");
+  Serial.println(pixel.color); 
 }
 
-bool readCsvFromUart(char *buffer, int bufferSize) {
-    static int bufferIndex = 0;
-    
-    // Read available data from Serial
+void displayCsvLine(const char *csv) {
+    uint8_t pos = 0;
+
+    // Parse X
+    uint16_t x = 0;
+    while (csv[pos] >= '0' && csv[pos] <= '9') {
+        x = x * 10 + (csv[pos] - '0');
+        pos++;
+    }
+    if (csv[pos] != ';') return;
+    pos++;
+
+    // Parse Y
+    uint16_t y = 0;
+    while (csv[pos] >= '0' && csv[pos] <= '9') {
+        y = y * 10 + (csv[pos] - '0');
+        pos++;
+    }
+    if (csv[pos] != ';') return;
+    pos++;
+
+    // Parse color
+    if (csv[pos] == '\0') return;
+    char c = csv[pos];
+
+    // Bounds check BEFORE creating pixel
+    if (x >= WIDTH || y >= HEIGHT) {
+        Serial.println(F("received pixel doesnt fit on the screen"));
+        return;
+    }
+
+    Pixel pixel = {
+        (short)x,
+        (short)y,
+        c
+    };
+    Serial.println(csv);
+    logPixel(pixel);
+
+    displayPixel(pixel);
+}
+
+void displayCsvFromUart() {
+    static uint16_t bufferIndex = 0;
+    static char csvLineBuffer[MAX_CSV_LINE_SIZE + 1];
+
     while (Serial.available() > 0) {
         char c = Serial.read();
-        
-        // Check for end of transmission (newline or null terminator)
-        if (c == '\n' || c == '\r' || bufferIndex >= bufferSize - 1) {
-            if (bufferIndex > 0) {
-                buffer[bufferIndex] = '\0';  // Null terminate the string
-                bufferIndex = 0;  // Reset buffer for next transmission
-                return true;  // Complete CSV line received
-            }
-        } else {
-            buffer[bufferIndex++] = c;  // Add character to buffer
+
+        // Ignore CR (Serial Monitor sends CRLF)
+        if (c == '\r') {
+            continue;
         }
+
+        // End of entire message
+        if (c == '\0') {
+            if (bufferIndex > 0) {
+                csvLineBuffer[bufferIndex] = '\0';
+                displayCsvLine(csvLineBuffer);
+                Serial.println("message received");
+                bufferIndex = 0;
+            }
+            return;
+        }
+
+        // End of one CSV line
+        if (c == '\n') {
+            csvLineBuffer[bufferIndex] = '\0';
+            displayCsvLine(csvLineBuffer);
+            bufferIndex = 0;
+            continue;
+        }
+
+        // Store character if space remains
+        if (bufferIndex < MAX_CSV_LINE_SIZE) {
+            csvLineBuffer[bufferIndex++] = c;
+        }
+        // else: silently discard extra chars to prevent overflow
     }
-    
-    return false;  // No complete CSV line received yet
+
 }
+
 
 void setup() {
   Serial.begin(9600);   // or 115200
   Serial.println("Serial started!");
   strip.begin();
+  strip.setBrightness(32);
   strip.clear();
-
-  // char * csv = "0;6;b\n";
-  // displayCsv(csv);
-  // strip.setPixelColor(0,strip.Color(255,0,255));
-  // strip.show();
-
-  
-
 }
 
+bool test = false;
 void loop() {
-  static char csvBuffer[1792-94-128]; // problemy z pamiecia dynamiczna moze niestarczyc miejsca
-  char * csv = "0;6;b\n";
+  // char * testCsvLine = test ? "0;0;b\n" : "0;1;r\n";
+  // test = !test;
+  // delay(100);
+
   strip.clear(); 
-  //if (readCsvFromUart(csvBuffer, sizeof(csvBuffer))) {
-  if (true) {
-    
-      
-    Serial.println(csvBuffer);
-    // displayCsv(csv);
-    // strip.show();
-    // delay(500);
-  }
+  displayCsvFromUart();
+  //displayCsvLine(testCsvLine);
   strip.show();
+  delay(300);
   
 }
