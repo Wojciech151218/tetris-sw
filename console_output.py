@@ -54,18 +54,12 @@ class ConsoleOutput(Output):
         except curses.error:
             pass
 
-    def _get_cell_attr(self, square: Optional[Square], should_blink_white: bool) -> int:
-        if square is None or square.color is None:
+    def _get_cell_attr(self, square: Optional[Square]) -> int:
+        if square is None:
             return 0
-        color_to_use = Color.WHITE if should_blink_white else square.color
-        return self._color_styles.get(color_to_use, 0)
+        return self._color_styles.get(square.get_color(), 0)
 
     def render(self, game: Game) -> None:
-        lines_to_clear = game.get_lines_to_clear()
-        should_blink_white = (
-            len(lines_to_clear) > 0
-            and (self._render_counter // RENDER_COUNTER_FOR_BLINKING) % 2 == 0
-        )
 
         grid: list[list[Optional[Square]]] = [
             [None for _ in range(game.width)] for _ in range(game.height)
@@ -88,8 +82,7 @@ class ConsoleOutput(Output):
             self._safe_addstr(y, 0, "|")
             for col_idx, square in enumerate(row):
                 x = 1 + col_idx * 2
-                blink = row_idx in lines_to_clear and should_blink_white
-                attr = self._get_cell_attr(square, blink)
+                attr = self._get_cell_attr(square)
                 self._safe_addstr(y, x, self.EMPTY_CELL, attr)
             self._safe_addstr(y, 1 + game.width * 2, "|")
         self._safe_addstr(game.height + 1, 0, horizontal_border)

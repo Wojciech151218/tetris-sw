@@ -57,7 +57,7 @@ def main(run_type, ticks_per_fall, refresh_rate, height, width):
         renderer = WebSocketOutput()
 
     else:
-        print("Invalid run type: " + run_type + " must be dev, bbb, bbb-console, bbb-web, or web ")
+        print("Invalid run type: " + run_type + " must be dev, bbb-console, bbb-web, or web ")
         return
 
     game_handler = GameHandler(
@@ -74,7 +74,7 @@ def main(run_type, ticks_per_fall, refresh_rate, height, width):
 
 if __name__ == "__main__":
     base_parser = argparse.ArgumentParser(add_help=False)
-    base_parser.add_argument("run_type", help="dev or bbb")
+    base_parser.add_argument("run_type", help="dev, bbb-console, bbb-web, or web")
     base_parser.add_argument(
         "--config",
         default="config.json",

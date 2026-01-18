@@ -6,7 +6,7 @@ from timer import Timer
 class GameHandler:
     def __init__(self,input: Input, output: Output,width =8 ,height = 32,ticks_per_fall=100):
         self.input = input
-        self.clear_line_stop_counter = ticks_per_fall * 2
+        self.clear_line_stop_counter = ticks_per_fall * 4
         self.width = width
         self.height = height
         self.game = Game(

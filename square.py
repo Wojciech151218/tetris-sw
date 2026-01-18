@@ -23,11 +23,16 @@ class Square:
         self.color = color
         self.x = x
         self.y = y
-
+        self.blink = False
     
-
+ 
     def get_color(self):
+        if self.blink or self.color is None:
+            return Color.WHITE
         return self.color
+
+    def set_blink(self, blink = True):
+        self.blink = blink
 
     
     

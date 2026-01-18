@@ -9,29 +9,35 @@ class Game:
         self.width = width
         self.height = height
         self.squares: list[Square] = []
-        self.lines_to_clear: list[int] = []
+        self.squares_to_clear: list[Square] = []
         self.stopped_counter: int = 0
         self.clear_line_stop_counter = clear_line_stop_counter
         self.block = self._create_new_block()
 
+    def _blink_squares_to_clear(self):
+        blinks = 8
+        should_toggle = self.stopped_counter % (self.clear_line_stop_counter / blinks) == 0
 
+
+        if should_toggle:
+            for square in self.squares_to_clear:
+                square.set_blink(not square.blink)
 
     def perform_tick(self, tick: Tick):
-        # If the game is stopped, beacuse of line clear, do not perform any actions
+
         if self.stopped_counter > 0:
+            self._blink_squares_to_clear()
             self.stopped_counter -= 1
             return
 
         self._clear_lines_if_possible()
 
-        # revive the block 
         if self.block is None:
             self.block = self._create_new_block()
             tick.reset_timer()
-        self.lines_to_clear = []
+        self.squares_to_clear = []
 
 
-        #choose the action to perform
         action = tick.get_action()
         if action is None or self.block is None:
             return
@@ -48,15 +54,23 @@ class Game:
         elif action == Action.DROP:
             self._drop()
 
+        if self._mark_squares_to_clear():
+            self.stopped_counter = self.clear_line_stop_counter
+        
+
         
 
 
-    def _mark_lines_to_clear(self):
+    def _mark_squares_to_clear(self) -> bool:
+        lines_to_clear = []
         for line in range(self.height) :
             if self._can_clear_line(line):
-                self.lines_to_clear.append(line)
+                lines_to_clear.append(line)        
+        self.squares_to_clear = list(filter(lambda square: square.y in lines_to_clear, self.squares))
+        for square in self.squares_to_clear:
+            square.set_blink()
 
-            
+        return len(lines_to_clear) > 0
             
 
         
@@ -116,21 +130,25 @@ class Game:
         return  len(line_squares) == self.width
 
     def _clear_lines_if_possible(self):
-        if not self.lines_to_clear:
+        if not self.squares_to_clear:
             return
 
 
-        squares_to_remove = []
+        cleared_lines = set(square.y for square in self.squares_to_clear)
+
         for square in self.squares:
-            if square.y in self.lines_to_clear:
-                squares_to_remove.append(square)
-            elif square.y < min(self.lines_to_clear):
-                square.y += len(self.lines_to_clear)
+            count = 0
+            for line in cleared_lines:
+                if square.y < line:
+                    count += 1
+            square.y += count
 
-        for square in squares_to_remove:
+
+        for square in self.squares_to_clear:
             self.squares.remove(square)
+    
+        
 
-        self.stopped_counter = self.clear_line_stop_counter
 
     def is_game_over(self):
         return self.block is not None \
@@ -144,8 +162,6 @@ class Game:
             squares.extend(self.block.get_squares())
         return squares
 
-    def get_lines_to_clear(self):
-        return self.lines_to_clear
 
 
 

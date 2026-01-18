@@ -20,7 +20,7 @@ class WebSocketOutput(Output):
         return {
             "x": square.x,
             "y": square.y,
-            "color": square.color.value,
+            "color": square.get_color().value,
         }
 
     def render(self, game: Game) -> None:
@@ -35,6 +35,5 @@ class WebSocketOutput(Output):
             "width": game.width,
             "height": game.height,
             "squares": squares,
-            "lines_to_clear": game.get_lines_to_clear(),
         }
         self._server.send_state(message)
