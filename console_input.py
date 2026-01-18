@@ -1,47 +1,34 @@
 from __future__ import annotations
 
+import curses
 from typing import Optional
-
-from blessed import Terminal
-from blessed.keyboard import Keystroke
 
 from action import Action
 from input import Input
+from curses_session import get_window
 
 
 class ConsoleInput(Input):
-    """Non-blocking controller that reads key presses via blessed."""
+    """Non-blocking controller that reads key presses via curses."""
 
     _BINDINGS = {
-        "q" : Action.ROTATE_LEFT,
-        "w" : Action.ROTATE_RIGHT,
-        "a" : Action.MOVE_LEFT,
-        "d" : Action.MOVE_RIGHT,
-        "s" : Action.DROP,
-
-        "KEY_UP": Action.ROTATE_LEFT,
-        "ctrl": Action.ROTATE_LEFT,
-        "KEY_DOWN": Action.DROP,
-        "KEY_LEFT": Action.MOVE_LEFT,
-        "KEY_RIGHT": Action.MOVE_RIGHT,
+        ord("q"): Action.ROTATE_LEFT,
+        ord("w"): Action.ROTATE_RIGHT,
+        ord("a"): Action.MOVE_LEFT,
+        ord("d"): Action.MOVE_RIGHT,
+        ord("s"): Action.DROP,
+        curses.KEY_UP: Action.ROTATE_LEFT,
+        curses.KEY_DOWN: Action.DROP,
+        curses.KEY_LEFT: Action.MOVE_LEFT,
+        curses.KEY_RIGHT: Action.MOVE_RIGHT,
     }
 
-    def __init__(self, term: Optional[Terminal] = None):
-        self._term = term or Terminal()
-
-    def _normalize_key(self, keypress: Keystroke) -> Optional[str]:
-        if not keypress:
-            return None
-        if keypress.is_sequence and keypress.name:
-            return keypress.name
-        text = str(keypress).strip().lower()
-        return text or None
+    def __init__(self, window: Optional[curses.window] = None):
+        self._window = get_window(window)
 
     def get_action(self) -> Optional[Action]:
-        with self._term.cbreak():
-            keypress = self._term.inkey(timeout=0)
-        command = self._normalize_key(keypress)
-        if not command:
+        keypress = self._window.getch()
+        if keypress == -1:
             return None
-        return self._BINDINGS.get(command)
+        return self._BINDINGS.get(keypress)
 

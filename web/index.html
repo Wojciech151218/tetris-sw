@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tetris WebSocket Client</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        font-family: system-ui, sans-serif;
+        background: #111;
+        color: #f5f5f5;
+      }
+      .layout {
+        display: flex;
+        gap: 24px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      :root {
+        --cell-size: 38px;
+      }
+      #board {
+        display: grid;
+        gap: 2px;
+        background: #222;
+        padding: 8px;
+        border-radius: 8px;
+        box-shadow: 0 0 0 1px #333 inset;
+      }
+      .cell {
+        width: var(--cell-size);
+        height: var(--cell-size);
+        background: #111;
+        border-radius: 2px;
+        box-shadow: 0 0 0 1px #222 inset;
+      }
+      .panel {
+        min-width: 240px;
+      }
+      .status {
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+      }
+      .controls {
+        display: grid;
+        gap: 6px;
+      }
+      button {
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1px solid #444;
+        background: #1f1f1f;
+        color: #f5f5f5;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #2a2a2a;
+      }
+      .hint {
+        font-size: 0.85rem;
+        color: #cfcfcf;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Tetris WebSocket Client</h1>
+    <div class="layout">
+      <div id="board"></div>
+      <div class="panel">
+        <div class="status" id="status">Disconnected</div>
+        <div class="controls">
+          <button data-action="rotate_left">Rotate Left (Q / ↑)</button>
+          <button data-action="rotate_right">Rotate Right (W)</button>
+          <button data-action="move_left">Move Left (A / ←)</button>
+          <button data-action="move_right">Move Right (D / →)</button>
+          <button data-action="drop">Drop (S / ↓)</button>
+        </div>
+        <p class="hint">
+          The page connects to <code>ws://127.0.0.1:8765</code>. Run the game with
+          <code>python main.py web</code>.
+        </p>
+      </div>
+    </div>
+
+    <script>
+      const statusEl = document.getElementById("status");
+      const boardEl = document.getElementById("board");
+      let socket = null;
+      let cellNodes = [];
+      let currentWidth = 0;
+      let currentHeight = 0;
+
+      function setStatus(text) {
+        statusEl.textContent = text;
+      }
+
+      function buildBoard(width, height) {
+        currentWidth = width;
+        currentHeight = height;
+        boardEl.innerHTML = "";
+        boardEl.style.gridTemplateColumns = `repeat(${width}, var(--cell-size))`;
+        boardEl.style.gridTemplateRows = `repeat(${height}, var(--cell-size))`;
+        cellNodes = [];
+        for (let y = 0; y < height; y += 1) {
+          for (let x = 0; x < width; x += 1) {
+            const cell = document.createElement("div");
+            cell.className = "cell";
+            boardEl.appendChild(cell);
+            cellNodes.push(cell);
+          }
+        }
+      }
+
+      function clearBoard() {
+        for (const cell of cellNodes) {
+          cell.style.background = "#111";
+        }
+      }
+
+      function updateBoard(state) {
+        const { width, height, squares } = state;
+        if (!width || !height) {
+          return;
+        }
+        if (width !== currentWidth || height !== currentHeight) {
+          buildBoard(width, height);
+        }
+        clearBoard();
+        for (const square of squares || []) {
+          const idx = square.y * width + square.x;
+          const node = cellNodes[idx];
+          if (node) {
+            node.style.background = square.color || "#fff";
+          }
+        }
+      }
+
+      function sendAction(action) {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+          return;
+        }
+        socket.send(JSON.stringify({ action }));
+      }
+
+      function connect() {
+        socket = new WebSocket("ws://127.0.0.1:8765");
+        setStatus("Connecting...");
+        socket.addEventListener("open", () => setStatus("Connected"));
+        socket.addEventListener("close", () => setStatus("Disconnected"));
+        socket.addEventListener("error", () => setStatus("Error"));
+        socket.addEventListener("message", (event) => {
+          try {
+            const payload = JSON.parse(event.data);
+            if (payload.type === "state") {
+              updateBoard(payload);
+            }
+          } catch (err) {
+            console.error("Invalid payload", err);
+          }
+        });
+      }
+
+      connect();
+
+      document.addEventListener("keydown", (event) => {
+        const keyMap = {
+          ArrowLeft: "move_left",
+          ArrowRight: "move_right",
+          ArrowDown: "drop",
+          ArrowUp: "rotate_left",
+          KeyQ: "rotate_left",
+          KeyW: "rotate_right",
+          KeyA: "move_left",
+          KeyD: "move_right",
+          KeyS: "drop",
+        };
+        const action = keyMap[event.code];
+        if (action) {
+          event.preventDefault();
+          sendAction(action);
+        }
+      });
+
+      document.querySelectorAll("button[data-action]").forEach((button) => {
+        button.addEventListener("click", () => sendAction(button.dataset.action));
+      });
+    </script>
+  </body>
+</html>

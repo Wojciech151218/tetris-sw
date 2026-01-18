@@ -1,65 +1,72 @@
 from __future__ import annotations
 
-import sys
+import curses
 from typing import Optional
-
-from blessed import Terminal
 
 from game import Game
 from output import Output
 from square import Color, Square
+from curses_session import get_window
 
 RENDER_COUNTER_FOR_BLINKING = 10
 
 class ConsoleOutput(Output):
-    """Terminal renderer that draws colored blocks using blessed."""
+    """Terminal renderer that draws colored blocks using curses."""
 
     EMPTY_CELL = "  "
 
     def __init__(
         self,
-        term: Optional[Terminal] = None,
-        output_stream=None,
+        window: Optional[curses.window] = None,
     ):
-        self._term = term or Terminal()
-        self._output = output_stream or sys.stdout
+        self._window = get_window(window)
         self._color_styles = self._build_color_styles()
         self._render_counter = 0
 
-    def _build_color_styles(self) -> dict[Color, str]:
-        term = self._term
-        return {
-            Color.RED: term.on_red,
-            Color.GREEN: term.on_green,
-            Color.BLUE: term.on_blue,
-            Color.YELLOW: term.on_yellow,
-            Color.PURPLE: term.on_magenta,
-            Color.ORANGE: term.on_color(208),
-            Color.PINK: term.on_color(205),
-            Color.BROWN: term.on_color(94),
-            Color.GRAY: term.on_color(245),
-            Color.BLACK: term.on_black,
-            Color.WHITE: term.on_white,
+    def _build_color_styles(self) -> dict[Color, int]:
+        if curses.has_colors():
+            curses.start_color()
+        color_pairs = {
+            Color.RED: curses.COLOR_RED,
+            Color.GREEN: curses.COLOR_GREEN,
+            Color.BLUE: curses.COLOR_BLUE,
+            Color.YELLOW: curses.COLOR_YELLOW,
+            Color.PURPLE: curses.COLOR_MAGENTA,
+            Color.ORANGE: curses.COLOR_YELLOW,
+            Color.PINK: curses.COLOR_MAGENTA,
+            Color.BROWN: curses.COLOR_YELLOW,
+            Color.GRAY: curses.COLOR_WHITE,
+            Color.BLACK: curses.COLOR_BLACK,
+            Color.WHITE: curses.COLOR_WHITE,
         }
+        styles: dict[Color, int] = {}
+        for index, (color, background) in enumerate(color_pairs.items(), start=1):
+            try:
+                curses.init_pair(index, curses.COLOR_BLACK, background)
+            except curses.error:
+                continue
+            styles[color] = curses.color_pair(index)
+        return styles
 
-    def _square_to_cell(self, square: Optional[Square], should_blink_white: bool = False) -> str:
+    def _safe_addstr(self, y: int, x: int, text: str, attr: int = 0) -> None:
+        try:
+            self._window.addstr(y, x, text, attr)
+        except curses.error:
+            pass
+
+    def _get_cell_attr(self, square: Optional[Square], should_blink_white: bool) -> int:
         if square is None or square.color is None:
-            return self.EMPTY_CELL
-        # If blinking is active, use white color
+            return 0
         color_to_use = Color.WHITE if should_blink_white else square.color
-        color_code = self._color_styles.get(color_to_use)
-        if not color_code:
-            return self.EMPTY_CELL
-        return f"{color_code}  {self._term.normal}"
+        return self._color_styles.get(color_to_use, 0)
 
-    def _build_board(self, game: Game) -> list[str]:
-
+    def render(self, game: Game) -> None:
         lines_to_clear = game.get_lines_to_clear()
-        
-        # Determine if we should blink white (every 5 render calls)
-        should_blink_white = len(lines_to_clear) > 0 and (self._render_counter // RENDER_COUNTER_FOR_BLINKING) % 2 == 0
+        should_blink_white = (
+            len(lines_to_clear) > 0
+            and (self._render_counter // RENDER_COUNTER_FOR_BLINKING) % 2 == 0
+        )
 
-        
         grid: list[list[Optional[Square]]] = [
             [None for _ in range(game.width)] for _ in range(game.height)
         ]
@@ -70,30 +77,26 @@ class ConsoleOutput(Output):
                 continue
             grid[square.y][square.x] = square
 
-        horizontal_border = "+" + "-" * (game.width * 2) + "+"
-        lines = [horizontal_border]
-        for row_idx, row in enumerate(grid):
-            # Check if this row is in lines_to_clear
-            is_clearing_line = row_idx in lines_to_clear
-            line = "|" + "".join(
-                self._square_to_cell(square, should_blink_white=is_clearing_line and should_blink_white) 
-                for square in row
-            ) + "|"
-            lines.append(line)
-        lines.append(horizontal_border)
-        return lines
-
-    def render(self, game: Game) -> None:
-        board_lines = self._build_board(game)
-        
         # Increment render counter for blinking effect
         self._render_counter += 1
-        
-        with self._term.hidden_cursor():
-            self._output.write(self._term.home + self._term.clear)
-            self._output.write("\n".join(board_lines))
-            self._output.write(
-                "\nControls: q=rotate left w=rotate right a=move left d=move right s=drop\n"
-            )
-            self._output.flush()
+
+        self._window.erase()
+        horizontal_border = "+" + "-" * (game.width * 2) + "+"
+        self._safe_addstr(0, 0, horizontal_border)
+        for row_idx, row in enumerate(grid):
+            y = row_idx + 1
+            self._safe_addstr(y, 0, "|")
+            for col_idx, square in enumerate(row):
+                x = 1 + col_idx * 2
+                blink = row_idx in lines_to_clear and should_blink_white
+                attr = self._get_cell_attr(square, blink)
+                self._safe_addstr(y, x, self.EMPTY_CELL, attr)
+            self._safe_addstr(y, 1 + game.width * 2, "|")
+        self._safe_addstr(game.height + 1, 0, horizontal_border)
+        self._safe_addstr(
+            game.height + 3,
+            0,
+            "Controls: q=rotate left w=rotate right a=move left d=move right s=drop",
+        )
+        self._window.refresh()
 

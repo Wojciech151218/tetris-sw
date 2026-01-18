@@ -3,16 +3,15 @@ from action import Tick, Action
 from block import BlockType, Block
 
 
-CLEAR_LINE_STOP_COUNTER = 100
 
 class Game:
-    def __init__(self,width: int, height: int):
+    def __init__(self,width: int, height: int,clear_line_stop_counter : int):
         self.width = width
         self.height = height
         self.squares: list[Square] = []
         self.lines_to_clear: list[int] = []
         self.stopped_counter: int = 0
-
+        self.clear_line_stop_counter = clear_line_stop_counter
         self.block = self._create_new_block()
 
 
@@ -49,11 +48,15 @@ class Game:
         elif action == Action.DROP:
             self._drop()
 
-        # check if any lines are full and clear them
+        
+
+
+    def _mark_lines_to_clear(self):
         for line in range(self.height) :
             if self._can_clear_line(line):
                 self.lines_to_clear.append(line)
 
+            
             
 
         
@@ -127,7 +130,7 @@ class Game:
         for square in squares_to_remove:
             self.squares.remove(square)
 
-        self.stopped_counter = CLEAR_LINE_STOP_COUNTER
+        self.stopped_counter = self.clear_line_stop_counter
 
     def is_game_over(self):
         return self.block is not None \

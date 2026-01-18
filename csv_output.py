@@ -24,7 +24,7 @@ class CsvOutput(Output):
 
         csv = '\n'.join([get_csv_from_square(s) for s in squares]) + '\0'
         message = csv.encode('utf-8')
-<<<<<<< HEAD
+
         print("sending {} squares: \n{}".format(csv.count('\n') + 1, csv))
         print(message)
 
