@@ -26,7 +26,7 @@ class Block:
 
         shapes = {
             BlockType.I: [
-                (0, -1), (0, 0), (0, 1), (0, 2)  # Vertical line
+                (0, -3), (0, -2), (0, -1), (0, 0)  # Vertical line
             ],
             BlockType.J: [
                 (-1, -1), (-1, 0), (0, 0), (1, 0)  # L-shape pointing right
@@ -35,10 +35,10 @@ class Block:
                 (1, -1), (-1, 0), (0, 0), (1, 0)  # L-shape pointing left
             ],
             BlockType.O: [
-                (0, 0), (1, 0), (0, 1), (1, 1)  # 2x2 square
+                (0, -1), (1, -1), (0, 0), (1, 0)  # 2x2 square
             ],
             BlockType.S: [
-                (-1, 0), (0, 0), (0, 1), (1, 1)  # S-shape
+                (-1, -1), (0, -1), (0, 0), (1, 0)  # S-shape
             ],
             BlockType.T: [
                 (0, -1), (-1, 0), (0, 0), (1, 0)  # T-shape
