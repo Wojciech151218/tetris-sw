@@ -1,6 +1,7 @@
 from input import Input
 from action import Action
 import Adafruit_BBIO.GPIO as GPIO
+import time
 from typing import Optional
 
 class ButtonInput(Input):
@@ -15,13 +16,20 @@ class ButtonInput(Input):
         GPIO.setup(self.right_button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.rotate_button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
+
+    def _wait_for_button_release(self, pin: str):
+        if GPIO.input(pin) == GPIO.LOW:
+            time.sleep(0.01)
+            return GPIO.input(pin) == GPIO.LOW
+        return False
+
     def get_action(self) -> Optional[Action]:
         # Read the button states (0 means pressed, 1 means not pressed due to pull-up)
-        if GPIO.input(self.left_button_pin) == GPIO.LOW:
+        if self._wait_for_button_release(self.left_button_pin):
             return Action.MOVE_LEFT
-        elif GPIO.input(self.right_button_pin) == GPIO.LOW:
+        elif self._wait_for_button_release(self.right_button_pin):
             return Action.MOVE_RIGHT
-        elif GPIO.input(self.rotate_button_pin) == GPIO.LOW:
+        elif self._wait_for_button_release(self.rotate_button_pin):
             return Action.ROTATE_LEFT
         else:
             return None
