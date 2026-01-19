@@ -6,7 +6,7 @@ import Adafruit_BBIO.UART as UART
 
 
 class CsvOutput(Output):
-    def __init__(self,uart = "UART1" , port ="/dev/ttyS1",baudrate=9600 ):
+    def __init__(self,uart = "UART1" , port ="/dev/ttyS1",baudrate=115200 ):
         UART.setup(uart)
         self.ser = serial.Serial(port = port, baudrate=baudrate)
         self.ser.close()
@@ -22,8 +22,8 @@ class CsvOutput(Output):
 
         squares = game.get_all_squares()
 
-        csv = '\n'.join([get_csv_from_square(s) for s in squares]) + '\0'
-        message = csv.encode('utf-8')
+        csv = '@\n'.join([get_csv_from_square(s) for s in squares]) + '\n#'
+        message = csv.encode('ascii')
 
         print("sending {} squares: \n{}".format(csv.count('\n') + 1, csv))
         print(message)

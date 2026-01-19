@@ -4,7 +4,10 @@ import time
 from game_handler import GameHandler
 from input import CombinedInput
 from output import CombinedOutput
-
+import os
+import threading
+from pathlib import Path
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 def load_config(path):
     with open(path, "r", encoding="utf-8") as config_file:
@@ -12,17 +15,21 @@ def load_config(path):
 
 
 def start_server(port: int = 8000):
-    import subprocess
-    import sys
-    from pathlib import Path
-
     project_root = Path(__file__).resolve().parent
-    return subprocess.Popen(
-        [sys.executable, "-m", "http.server", str(port)],
-        cwd=str(project_root),
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+    os.chdir(project_root)
+
+    server = ThreadingHTTPServer(
+        ("0.0.0.0", port),
+        SimpleHTTPRequestHandler,
     )
+
+    thread = threading.Thread(
+        target=server.serve_forever,
+        daemon=True,
+    )
+    thread.start()
+
+    return server
 
 
 def main(run_type, ticks_per_fall, refresh_rate, height, width):
@@ -55,6 +62,15 @@ def main(run_type, ticks_per_fall, refresh_rate, height, width):
         server_process = start_server()
         controller =  WebSocketInput()
         renderer = WebSocketOutput()
+
+    elif run_type == "web-console":
+        from websocket_input import WebSocketInput
+        from websocket_output import WebSocketOutput
+        from console_input import ConsoleInput
+        from console_output import ConsoleOutput
+        server_process = start_server()
+        controller =  CombinedInput([WebSocketInput(),ConsoleInput()])
+        renderer = CombinedOutput([WebSocketOutput(),ConsoleOutput()])
 
     else:
         print("Invalid run type: " + run_type + " must be dev, bbb-console, bbb-web, or web ")
